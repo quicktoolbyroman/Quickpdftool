@@ -148,6 +148,22 @@ convert.disabled=false;
 }
 });
 download.addEventListener('click',()=>{
+  if(!pdfBlob){
+    status.textContent='Please convert your photo first.';
+    return;
+  }
+
+  const url=URL.createObjectURL(pdfBlob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download='Quick-PDF-Tool.pdf';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  status.textContent='Your PDF has been downloaded.';
+});
 if(!pdfBlob){
 status.textContent='Please convert your photo first.';
 return;
