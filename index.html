@@ -129,15 +129,14 @@ page2.appendChild(img);
 wrapper.append(page1,page2);
 document.body.appendChild(wrapper);
 
-await html2pdf().set({
+pdfBlob = await html2pdf().set({
 margin:10,
 filename:'Quick-PDF-Tool.pdf',
 image:{type:'jpeg',quality:0.95},
 html2canvas:{scale:2,useCORS:true},
 jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
 pagebreak:{mode:['css','legacy']}
-}).from(wrapper).save();
-
+}).from(wrapper).outputPdf('blob');
 wrapper.remove();
 status.textContent='Your PDF is ready! You can download it again using the button below.';
 download.hidden=false;
@@ -148,10 +147,24 @@ console.error(error);
 convert.disabled=false;
 }
 });
-
 download.addEventListener('click',()=>{
-status.textContent='To create the PDF again, press Convert Photo to PDF.';
+if(!pdfBlob){
+status.textContent='Please convert your photo first.';
+return;
+}
+
+const url=URL.createObjectURL(pdfBlob);
+const link=document.createElement('a');
+link.href=url;
+link.download='Quick-PDF-Tool.pdf';
+document.body.appendChild(link);
+link.click();
+link.remove();
+
+setTimeout(()=>URL.revokeObjectURL(url),1000);
+status.textContent='Your PDF has been downloaded.';
 });
+  
 </script>
 </body>
 </html>
