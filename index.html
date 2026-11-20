@@ -1,187 +1,595 @@
 
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#172554">
 <title>Quick PDF Tool - Photo to PDF</title>
-<meta name="description" content="Convert photos into PDF with extracted text and original image in two pages.">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#f1f5f9;color:#172554;font-family:Arial,sans-serif}
-header{background:#172554;color:white;text-align:center;padding:25px 12px}
-header h1{margin:0;font-size:30px}
-header p{color:#dbeafe}
-main{max-width:650px;margin:25px auto;padding:0 14px}
-.card{background:white;border-radius:15px;padding:22px;box-shadow:0 4px 18px #0001}
-h2{margin-top:0}
-input{width:100%;padding:14px;border:1px dashed #64748b;border-radius:9px;margin:12px 0}
-button{width:100%;padding:14px;border:0;border-radius:9px;background:#2563eb;color:white;font-size:16px;font-weight:bold;margin-top:12px}
-button:disabled{opacity:.5}
-#preview{max-width:100%;max-height:300px;display:none;margin:15px auto;border-radius:8px}
-#status{padding:12px;background:#eff6ff;border-radius:8px;margin-top:15px;line-height:1.5}
-#output{margin-top:15px;white-space:pre-wrap;overflow-wrap:anywhere;font-family:'Noto Sans Devanagari',Arial,sans-serif;line-height:1.7}
-footer{text-align:center;padding:25px;color:#64748b}
-</style>
-</head>
-<body>
-<header>
-<h1>📄 Quick PDF Tool</h1>
-<p>Convert your photo into a two-page PDF</p>
-</header>
-<main>
-<div class="card">
-<h2>Photo to PDF Converter</h2>
-<p>Upload a photo. We will extract its text and create a PDF with two pages.</p>
-<input type="file" id="photo" accept="image/*">
-<img id="preview" alt="Selected photo preview">
-<button id="convert" disabled>Convert Photo to PDF</button>
-<div id="status">Please select a photo to get started.</div>
-<div id="output"></div>
-<button id="download" hidden>Download PDF</button>
-</div>
-</main>
-<footer>© 2026 Quick PDF Tool</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ padding:20px 12px;
+ font-family:Arial,"Noto Sans Devanagari",sans-serif;
+ background:#f1f5f9;
+ color:#172554;
+}
+.container{
+ max-width:650px;
+ margin:auto;
+}
+header{
+ text-align:center;
+ padding:25px 12px;
+ background:#172554;
+ color:white;
+ border-radius:18px;
+}
+header h1{margin:0 0 8px;font-size:28px}
+header p{margin:0;color:#dbeafe}
+.card{
+ background:white;
+ padding:20px;
+ margin-top:18px;
+ border-radius:16px;
+ box-shadow:0 4px 18px #0000000d;
+}
+h2{font-size:19px;margin:0 0 14px}
+label{
+ display:block;
+ font-weight:bold;
+ margin:12px 0 8px;
+}
+input,select,textarea{
+ width:100%;
+ padding:13px;
+ border:1px solid #cbd5e1;
+ border-radius:10px;
+ font-size:16px;
+ background:white;
+}
+button{
+ width:100%;
+ padding:14px;
+ border:0;
+ border-radius:10px;
+ background:#2563eb;
+ color:white;
+ font-size:16px;
+ font-weight:bold;
+ margin-top:13px;
+ cursor:pointer;
+}
+button:disabled{
+ background:#94a3b8;
+ cursor:not-allowed;
+}
+.secondary{background:#475569}
+.success{background:#15803d}
+#preview{
+ width:100%;
+ max-height:350px;
+ object-fit:contain;
+ margin-top:15px;
+ border-radius:10px;
+ background:#f8fafc;
+ display:none;
+}
+#status{
+ margin-top:14px;
+ padding:12px;
+ background:#eff6ff;
+ border-radius:9px;
+ line-height:1.5;
+ overflow-wrap:anywhere;
+}
+.progress{
+ width:100%;
+ height:10px;
+ background:#e2e8f0;
+ border-radius:20px;
+ margin-top:12px;
+ overflow:hidden;
+}
+#progressBar{
+ height:100%;
+ width:0%;
+ background:#2563eb;
+ transition:width .2s;
+}
+textarea{
+ min-height:180px;
+ resize:vertical;
+ line-height:1.6;
+}
+.small{
+ font-size:13px;
+ color:#64748b;
+ line-height:1.5;
+}
+footer{
+ text-align:center;
+ color:#64748b;
+ font-size:13px;
+ padding:22px 5px;
+}
+
+/* PDF ke pehle page ka layout */
+#pdfTextPage{
+ position:fixed;
+ left:-10000px;
+ top:0;
+ width:794px;
+ height:1123px;
+ padding:55px;
+ background:white;
+ color:#111827;
+ overflow:hidden;
+}
+#pdfTextPage h1{
+ font-size:30px;
+ text-align:center;
+ margin:0 0 12px;
+}
+#pdfTextPage .pdf-date{
+ text-align:center;
+ color:#64748b;
+ font-size:14px;
+ margin-bottom:25px;
+}
+#pdfTextContent{
+ font-size:19px;
+ line-height:1.55;
+ white-space:pre-wrap;
+ overflow-wrap:anywhere;
+ word-break:normal;
+}
+#pdfTextPage .pdf-footer{
+ position:absolute;
+ bottom:25px;
+ left:55px;
+ right:55px;
+ text-align:center;
+ font-size:12px;
+ color:#64748b;
+ border-top:1px solid #ddd;
+ padding-top:10px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+<h1>Quick PDF Tool</h1>
+<p>Photo se Text nikalo aur PDF banao</p>
+</header>
+
+<section class="card">
+<h2>1. Apni Photo Upload Karein</h2>
+
+<label for="photoInput">Photo Select Karein</label>
+<input
+ type="file"
+ id="photoInput"
+ accept="image/jpeg,image/png,image/webp"
+>
+
+<p class="small">
+JPG, PNG aur WEBP photo supported hain. Maximum file size 15 MB.
+</p>
+
+<img id="preview" alt="Uploaded photo preview">
+</section>
+
+<section class="card">
+<h2>2. OCR Language Select Karein</h2>
+
+<label for="language">Text ki Language</label>
+<select id="language">
+ <option value="eng+hin">Hindi + English</option>
+ <option value="eng">English</option>
+ <option value="hin">Hindi</option>
+</select>
+
+<button id="extractBtn" disabled>
+Photo se Text Nikalein
+</button>
+
+<div class="progress">
+ <div id="progressBar"></div>
+</div>
+
+<div id="status" role="status" aria-live="polite">
+Pehle photo upload karein.
+</div>
+</section>
+
+<section class="card">
+<h2>3. Nikala Hua Text</h2>
+
+<textarea
+ id="resultText"
+ placeholder="Photo se nikala hua text yahan dikhega..."
+></textarea>
+
+<p class="small">
+Aap chahein to PDF banane se pehle text ko edit bhi kar sakte hain.
+</p>
+
+<button id="pdfBtn" disabled>
+PDF Banayein aur Download Karein
+</button>
+
+<button id="downloadBtn" class="success" disabled>
+PDF Dobara Download Karein
+</button>
+</section>
+
+<footer>
+Quick PDF Tool | Simple Photo to PDF Converter
+</footer>
+</div>
+
+<!-- PDF ke page 1 ka hidden layout -->
+<div id="pdfTextPage">
+ <h1>Extracted Text</h1>
+ <div class="pdf-date" id="pdfDate"></div>
+ <div id="pdfTextContent"></div>
+ <div class="pdf-footer">Created with Quick PDF Tool</div>
+</div>
 
 <script>
-const photo=document.getElementById('photo');
-const preview=document.getElementById('preview');
-const convert=document.getElementById('convert');
-const download=document.getElementById('download');
-const status=document.getElementById('status');
-const output=document.getElementById('output');
-let imageData='';
-let extractedText='';
+"use strict";
 
-photo.addEventListener('change',()=>{
-const file=photo.files[0];
-if(!file)return;
-if(!file.type.startsWith('image/')){
-status.textContent='Please select a valid image.';
-return;
+const photoInput = document.getElementById("photoInput");
+const preview = document.getElementById("preview");
+const language = document.getElementById("language");
+const extractBtn = document.getElementById("extractBtn");
+const pdfBtn = document.getElementById("pdfBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+const resultText = document.getElementById("resultText");
+const statusBox = document.getElementById("status");
+const progressBar = document.getElementById("progressBar");
+const pdfTextPage = document.getElementById("pdfTextPage");
+const pdfTextContent = document.getElementById("pdfTextContent");
+const pdfDate = document.getElementById("pdfDate");
+
+let selectedFile = null;
+let previewUrl = null;
+let pdfBlob = null;
+let isProcessing = false;
+
+function showStatus(message){
+ statusBox.textContent = message;
 }
-const reader=new FileReader();
-reader.onload=()=>{
-imageData=reader.result;
-preview.src=imageData;
-preview.style.display='block';
-convert.disabled=false;
-download.hidden=true;
-output.textContent='';
-status.textContent='Photo selected. Ready to convert.';
-};
-reader.readAsDataURL(file);
+
+function setProgress(value){
+ const safeValue = Math.max(0,Math.min(100,value));
+ progressBar.style.width = safeValue + "%";
+}
+
+function resetPDF(){
+ pdfBlob = null;
+ pdfBtn.disabled = true;
+ downloadBtn.disabled = true;
+}
+
+photoInput.addEventListener("change",function(){
+ const file = this.files && this.files[0];
+
+ resetPDF();
+ resultText.value = "";
+ setProgress(0);
+
+ if(!file){
+  selectedFile = null;
+  extractBtn.disabled = true;
+  preview.style.display = "none";
+  showStatus("Photo select nahi hui.");
+  return;
+ }
+
+ const allowedTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/webp"
+ ];
+
+ if(!allowedTypes.includes(file.type)){
+  selectedFile = null;
+  extractBtn.disabled = true;
+  preview.style.display = "none";
+  showStatus("Kripya JPG, PNG ya WEBP photo select karein.");
+  photoInput.value = "";
+  return;
+ }
+
+ if(file.size > 15 * 1024 * 1024){
+  selectedFile = null;
+  extractBtn.disabled = true;
+  preview.style.display = "none";
+  showStatus("Photo 15 MB se chhoti honi chahiye.");
+  photoInput.value = "";
+  return;
+ }
+
+ selectedFile = file;
+
+ if(previewUrl){
+  URL.revokeObjectURL(previewUrl);
+ }
+
+ previewUrl = URL.createObjectURL(file);
+ preview.src = previewUrl;
+ preview.style.display = "block";
+
+ extractBtn.disabled = false;
+ showStatus("Photo upload ho gayi. Ab text nikalein.");
 });
 
-convert.addEventListener('click',async()=>{
-if(!imageData)return;
-convert.disabled=true;
-download.hidden=true;
-output.textContent='';
-try{
-status.textContent='Reading photo... Please wait.';
-const result=await Tesseract.recognize(imageData,'eng+hin',{
-logger:m=>{
-if(m.status==='recognizing text'){
-status.textContent='Extracting text: '+Math.round(m.progress*100)+'%';
-}
-}
-});
-extractedText=result.data.text.trim();
-if(!extractedText)extractedText='No readable text was found in this photo.';
-output.textContent=extractedText;
-status.textContent='Text extracted. Preparing your two-page PDF...';
-await document.fonts.ready;
+extractBtn.addEventListener("click",async function(){
 
-const wrapper=document.createElement('div');
-wrapper.style.width='180mm';
-wrapper.style.fontFamily="'Noto Sans Devanagari', Arial, sans-serif";
+ if(!selectedFile || isProcessing) return;
 
-const page1=document.createElement('div');
-page1.style.width='180mm';
-page1.style.minHeight='265mm';
-page1.style.padding='10mm';
-page1.style.pageBreakAfter='always';
-page1.innerHTML='<h2 style="color:#172554">Extracted Text</h2><div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:12pt"></div>';
-page1.querySelector('div').textContent=extractedText;
+ if(typeof Tesseract === "undefined"){
+  showStatus("OCR library load nahi hui. Internet check karke page refresh karein.");
+  return;
+ }
 
-const page2=document.createElement('div');
-page2.style.width='180mm';
-page2.style.height='265mm';
-page2.style.padding='10mm';
-page2.style.display='flex';
-page2.style.flexDirection='column';
-page2.style.alignItems='center';
-page2.style.justifyContent='center';
-page2.style.pageBreakAfter='auto';
-page2.innerHTML='<h2 style="color:#172554">Original Photo</h2>';
-const img=document.createElement('img');
-img.src=imageData;
-img.style.maxWidth='100%';
-img.style.maxHeight='235mm';
-img.style.objectFit='contain';
-page2.appendChild(img);
+ isProcessing = true;
+ extractBtn.disabled = true;
+ pdfBtn.disabled = true;
+ downloadBtn.disabled = true;
+ resultText.value = "";
+ setProgress(0);
 
-wrapper.append(page1,page2);
-document.body.appendChild(wrapper);
+ showStatus("OCR engine taiyar ho raha hai. Kripya intezar karein...");
 
-pdfBlob = await html2pdf().set({
-margin:10,
-filename:'Quick-PDF-Tool.pdf',
-image:{type:'jpeg',quality:0.95},
-html2canvas:{scale:2,useCORS:true},
-jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-pagebreak:{mode:['css','legacy']}
-}).from(wrapper).outputPdf('blob');
-wrapper.remove();
-status.textContent='Your PDF is ready! You can download it again using the button below.';
-download.hidden=false;
-}catch(error){
-status.textContent='Something went wrong. Please try another photo or try again.';
-console.error(error);
-}finally{
-convert.disabled=false;
-}
-});
-download.addEventListener('click',()=>{
-  if(!pdfBlob){
-    status.textContent='Please convert your photo first.';
-    return;
+ try{
+  const lang = language.value;
+
+  const result = await Tesseract.recognize(
+   selectedFile,
+   lang,
+   {
+    logger: function(info){
+     if(info.status === "recognizing text"){
+      const percent = Math.round((info.progress || 0) * 100);
+      setProgress(percent);
+      showStatus("Photo se text nikala ja raha hai: " + percent + "%");
+     }
+     else if(info.status === "loading language traineddata"){
+      const percent = Math.round((info.progress || 0) * 100);
+      showStatus("Language data load ho raha hai: " + percent + "%");
+     }
+    }
+   }
+  );
+
+  const extracted = (result.data.text || "").trim();
+
+  if(!extracted){
+   throw new Error("Photo mein readable text nahi mila. Saaf photo try karein.");
   }
 
-  const url=URL.createObjectURL(pdfBlob);
-  const link=document.createElement('a');
-  link.href=url;
-  link.download='Quick-PDF-Tool.pdf';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  resultText.value = extracted;
+  pdfBtn.disabled = false;
+  setProgress(100);
+  showStatus("Text successfully nikal gaya! Ab PDF bana sakte hain.");
 
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-  status.textContent='Your PDF has been downloaded.';
+ }catch(error){
+  console.error(error);
+  showStatus("OCR Error: " + (error.message || "Text nahi nikal paya."));
+ }finally{
+  isProcessing = false;
+  extractBtn.disabled = !selectedFile;
+ }
 });
-if(!pdfBlob){
-status.textContent='Please convert your photo first.';
-return;
+
+function fitTextToPage(){
+ let fontSize = 19;
+ pdfTextContent.style.fontSize = fontSize + "px";
+
+ while(
+  pdfTextContent.scrollHeight > pdfTextContent.clientHeight &&
+  fontSize > 6
+ ){
+  fontSize -= 0.5;
+  pdfTextContent.style.fontSize = fontSize + "px";
+ }
+
+ return pdfTextContent.scrollHeight <= pdfTextContent.clientHeight;
 }
 
-const url=URL.createObjectURL(pdfBlob);
-const link=document.createElement('a');
-link.href=url;
-link.download='Quick-PDF-Tool.pdf';
-document.body.appendChild(link);
-link.click();
-link.remove();
+async function createPDF(){
 
-setTimeout(()=>URL.revokeObjectURL(url),1000);
-status.textContent='Your PDF has been downloaded.';
+ if(!selectedFile){
+  throw new Error("Pehle photo upload karein.");
+ }
+
+ const text = resultText.value.trim();
+
+ if(!text){
+  throw new Error("PDF banane ke liye text zaroori hai.");
+ }
+
+ if(typeof html2canvas === "undefined" ||
+    !window.jspdf ||
+    !window.jspdf.jsPDF){
+  throw new Error("PDF library load nahi hui. Internet check karein.");
+ }
+
+ pdfTextContent.textContent = text;
+ pdfDate.textContent = "Created on " + new Date().toLocaleString();
+
+ const fits = fitTextToPage();
+
+ if(!fits){
+  throw new Error(
+   "Text bahut zyada lamba hai aur do page ke format mein fit nahi ho raha. Text chhota karein."
+  );
+ }
+
+ showStatus("PDF ka pehla page ban raha hai...");
+
+ const textCanvas = await html2canvas(pdfTextPage,{
+  scale:2,
+  backgroundColor:"#ffffff",
+  useCORS:true,
+  logging:false
+ });
+
+ const {jsPDF} = window.jspdf;
+
+ const pdf = new jsPDF({
+  orientation:"portrait",
+  unit:"mm",
+  format:"a4",
+  compress:true
+ });
+
+ pdf.addImage(
+  textCanvas.toDataURL("image/jpeg",0.95),
+  "JPEG",
+  0,
+  0,
+  210,
+  297
+ );
+
+ showStatus("PDF ka doosra page ban raha hai...");
+
+ const image = new Image();
+ const imageUrl = URL.createObjectURL(selectedFile);
+
+ try{
+  await new Promise((resolve,reject)=>{
+   image.onload = resolve;
+   image.onerror = ()=>reject(new Error("Photo PDF mein load nahi ho payi."));
+   image.src = imageUrl;
+  });
+
+  const canvas = document.createElement("canvas");
+  const maxSide = 2400;
+  const scale = Math.min(
+   1,
+   maxSide / Math.max(image.naturalWidth,image.naturalHeight)
+  );
+
+  canvas.width = Math.max(1,Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1,Math.round(image.naturalHeight * scale));
+
+  const context = canvas.getContext("2d");
+
+  if(!context){
+   throw new Error("Photo process nahi ho payi.");
+  }
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0,0,canvas.width,canvas.height);
+  context.drawImage(image,0,0,canvas.width,canvas.height);
+
+  pdf.addPage("a4","portrait");
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 10;
+
+  const maxWidth = pageWidth - margin * 2;
+  const maxHeight = pageHeight - margin * 2;
+
+  const ratio = Math.min(
+   maxWidth / canvas.width,
+   maxHeight / canvas.height
+  );
+
+  const drawWidth = canvas.width * ratio;
+  const drawHeight = canvas.height * ratio;
+  const x = (pageWidth - drawWidth) / 2;
+  const y = (pageHeight - drawHeight) / 2;
+
+  pdf.addImage(
+   canvas.toDataURL("JPEG",0.95),
+   "JPEG",
+   x,
+   y,
+   drawWidth,
+   drawHeight
+  );
+
+ }finally{
+  URL.revokeObjectURL(imageUrl);
+ }
+
+ return pdf.output("blob");
+}
+
+pdfBtn.addEventListener("click",async function(){
+
+ if(isProcessing) return;
+
+ pdfBtn.disabled = true;
+ downloadBtn.disabled = true;
+
+ try{
+  showStatus("PDF taiyar ho rahi hai. Kripya intezar karein...");
+
+  pdfBlob = await createPDF();
+
+  if(!pdfBlob || pdfBlob.size === 0){
+   throw new Error("PDF file nahi ban payi.");
+  }
+
+  showStatus("PDF taiyar hai! Download button dabayein.");
+  downloadBtn.disabled = false;
+
+ }catch(error){
+  console.error(error);
+  pdfBlob = null;
+  showStatus("PDF Error: " + (error.message || "PDF nahi ban payi."));
+ }finally{
+  pdfBtn.disabled = false;
+ }
 });
-  
+
+downloadBtn.addEventListener("click",function(){
+
+ if(!pdfBlob){
+  showStatus("Pehle PDF banayein.");
+  return;
+ }
+
+ const url = URL.createObjectURL(pdfBlob);
+ const link = document.createElement("a");
+
+ link.href = url;
+ link.download = "Quick-PDF-Tool.pdf";
+
+ document.body.appendChild(link);
+ link.click();
+ link.remove();
+
+ setTimeout(()=>{
+  URL.revokeObjectURL(url);
+ },3000);
+
+ showStatus("PDF download request bhej di gayi hai. Downloads folder check karein.");
+});
+
+window.addEventListener("beforeunload",function(){
+ if(previewUrl){
+  URL.revokeObjectURL(previewUrl);
+ }
+});
 </script>
 </body>
 </html>
-<!-- Pages rebuild -->
